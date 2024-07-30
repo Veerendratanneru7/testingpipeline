@@ -1,0 +1,147 @@
+# Elasticsearch Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: your-nexus-repo/elasticsearch:8.4.3
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
+
+---
+# Elasticsearch Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+spec:
+  ports:
+  - port: 9200
+    targetPort: 9200
+  selector:
+    app: elasticsearch
+
+---
+# Kibana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: your-nexus-repo/kibana:8.4.3
+        ports:
+        - containerPort: 5601
+        env:
+        - name: ELASTICSEARCH_URL
+          value: http://elasticsearch:9200
+
+---
+# Kibana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+spec:
+  ports:
+  - port: 5601
+    targetPort: 5601
+  selector:
+    app: kibana
+
+---
+# Kibana Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kibana
+spec:
+  to:
+    kind: Service
+    name: kibana
+  port:
+    targetPort: 5601
+
+---
+# Filebeat ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/containers/*.log
+
+    output.elasticsearch:
+      hosts: ["http://elasticsearch:9200"]
+      username: "elastic"
+      password: "changeme"
+
+---
+# Filebeat DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  labels:
+    app: filebeat
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      containers:
+      - name: filebeat
+        image: your-nexus-repo/filebeat:8.4.3
+        args: ["-c", "/usr/share/filebeat/filebeat.yml", "-e"]
+        env:
+        - name: ELASTICSEARCH_HOST
+          value: "elasticsearch"
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: filebeat-config
+          mountPath: /usr/share/filebeat/filebeat.yml
+          subPath: filebeat.yml
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: filebeat-config
+        configMap:
+          name: filebeat-config
