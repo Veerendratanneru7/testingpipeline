@@ -1,59 +1,48 @@
 pipeline {
     agent any
-
+    
     environment {
-        REGISTRY = 'your-docker-registry-url'
-        IMAGE_NAME = 'your-image-name'
-        PROJECT_NAME = 'your-openshift-project'
-        DEPLOYMENT_NAME = 'your-deployment-name'
-        OPENSHIFT_API_URL = 'your-openshift-api-url'
-        OPENSHIFT_TOKEN = credentials('openshift-token-credential-id')
+        OPENSHIFT_SERVER = 'https://your-openshift-cluster:8443'
+        OPENSHIFT_PROJECT = 'your-project'
+        OPENSHIFT_CREDENTIALS = 'openshift-credentials-id'
     }
-
+    
     stages {
-        stage('Checkout Code') {
+        stage('Clone Repository') {
             steps {
-                checkout scm
+                git 'https:'
             }
         }
-
-        stage('Build Docker Image') {
+        
+        stage('Login to OpenShift') {
             steps {
                 script {
-                    def imageTag = "${env.BUILD_NUMBER}"
-                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${imageTag} ."
+                    withCredentials([string(credentialsId: OPENSHIFT_CREDENTIALS, variable: 'TOKEN')]) {
+                        sh "oc login ${env.OPENSHIFT_SERVER} --token=${TOKEN} --insecure-skip-tls-verify"
+                        sh "oc project ${env.OPENSHIFT_PROJECT}"
+                    }
                 }
             }
         }
-
-        stage('Push Docker Image') {
+        
+        stage('Build Application') {
             steps {
-                script {
-                    def imageTag = "${env.BUILD_NUMBER}"
-                    sh "docker login ${REGISTRY} -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}"
-                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${imageTag}"
-                }
+                sh 'oc start-build your-build-config'
             }
         }
-
-        stage('Deploy to OpenShift') {
+        
+        stage('Deploy Application') {
             steps {
-                script {
-                    def imageTag = "${env.BUILD_NUMBER}"
-                    sh """
-                    oc login ${OPENSHIFT_API_URL} --token=${OPENSHIFT_TOKEN}
-                    oc project ${PROJECT_NAME}
-                    oc set image deployment/${DEPLOYMENT_NAME} ${DEPLOYMENT_NAME}=${REGISTRY}/${IMAGE_NAME}:${imageTag}
-                    oc rollout status deployment/${DEPLOYMENT_NAME}
-                    """
-                }
+                sh 'oc apply -f your-deployment-config.yaml'
             }
         }
     }
-
+    
     post {
         always {
-            cleanWs()
+            script {
+                sh 'oc logout'
+            }
         }
     }
 }
