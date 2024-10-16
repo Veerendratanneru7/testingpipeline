@@ -1,8 +1,19 @@
 name: CI/CD Pipeline
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        type: choice
+        required: true
+        default: 'dev'
+        options:
+          - dev
+          - sit
+          - production
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,14 +24,10 @@ jobs:
       - name: Extract branch name
         run: echo "branch_name=${GITHUB_REF}" >> $GITHUB_ENV
 
-  check_branch_and_tag:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Check if valid branch and tag for sit
         if: inputs.environment == 'sit'
         run: | 
-          if [[ "${{ env.branch_name }}" != "refs/heads/main" && ! "${{ env.branch_name }}" =~ ^refs/heads/release/ ]]; then 
+          if [[ "${{ env.branch_name }}" != "refs/heads/main" && ! "${{ env.branch_name }}" =~ ^refs/heads/feature/ ]]; then 
             echo "Error: Only the main or release branches can trigger sit environments."
             exit 1
           fi
@@ -30,4 +37,3 @@ jobs:
             exit 1
           fi
         shell: bash
-
