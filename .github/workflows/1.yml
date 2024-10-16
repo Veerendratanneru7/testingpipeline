@@ -27,7 +27,7 @@ jobs:
       - name: Check if valid branch and tag for sit
         if: inputs.environment == 'sit'
         run: | 
-          if [[ "${{ env.branch_name }}" != "refs/heads/main" && ! "${{ env.branch_name }}" =~ ^refs/heads/feature/ ]]; then 
+          if [[ ! "${{ env.branch_name }}" =~ ^refs/heads/feature/ ]]; then 
             echo "Error: Only the main or release branches can trigger sit environments."
             exit 1
           fi
