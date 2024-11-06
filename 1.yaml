@@ -1,9 +1,7 @@
 name: List GCP SSL Certificates
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   list-ssl-certificates:
