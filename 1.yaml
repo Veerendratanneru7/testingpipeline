@@ -1,0 +1,29 @@
+name: List GCP SSL Certificates
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  list-ssl-certificates:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+
+    - name: Authenticate to GCP
+      env:
+        GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+      run: |
+        echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" | gcloud auth activate-service-account --key-file=-
+        gcloud config set project $GCP_PROJECT
+
+    - name: List SSL Certificates
+      run: gcloud compute ssl-certificates list
