@@ -1,7 +1,9 @@
 name: List GCP SSL Certificates
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   list-ssl-certificates:
@@ -18,9 +20,11 @@ jobs:
 
     - name: Authenticate to GCP
       env:
+        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
       run: |
-        echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" | gcloud auth activate-service-account --key-file=-
+        echo "${GCP_SERVICE_ACCOUNT_KEY}" > /tmp/key.json
+        gcloud auth activate-service-account --key-file=/tmp/key.json
         gcloud config set project $GCP_PROJECT
 
     - name: List SSL Certificates
