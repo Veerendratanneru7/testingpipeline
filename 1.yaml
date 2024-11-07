@@ -26,4 +26,12 @@ jobs:
         gcloud config set project $GCP_PROJECT
 
     - name: List SSL Certificates with expiry dates
-      run: gcloud certificate-manager certificates list --format="table(NAME, EXPIRE_TIME)"
+      run: gcloud certificate-manager certificates list --format="table(NAME, EXPIRE_TIME)"  > certs_output.txt
+
+    - name: Send to Slack
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        CERTS_OUTPUT=$(cat certs_output.txt)
+        MESSAGE="*SSL Certificates List:*\n\`\`\`${CERTS_OUTPUT}\`\`\`"
+        curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"${MESSAGE}\"}" $SLACK_WEBHOOK_URL
