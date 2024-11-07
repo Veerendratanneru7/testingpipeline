@@ -25,5 +25,5 @@ jobs:
         gcloud auth activate-service-account --key-file=/tmp/key.json
         gcloud config set project $GCP_PROJECT
 
-    - name: List SSL Certificates
-      run: gcloud compute ssl-certificates list
+    - name: List SSL Certificates with expiry dates
+      run: gcloud certificate-manager certificates list --format="table(NAME, EXPIRE_TIME)"
