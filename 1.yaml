@@ -12,9 +12,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Google Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        version: 'latest'
+      uses: google-github-actions/setup-gcloud@v2
 
     - name: Authenticate to GCP
       env:
@@ -25,13 +23,71 @@ jobs:
         gcloud auth activate-service-account --key-file=/tmp/key.json
         gcloud config set project $GCP_PROJECT
 
-    - name: List SSL Certificates with expiry dates
-      run: gcloud certificate-manager certificates list --format="table(NAME, EXPIRE_TIME)"  > certs_output.txt
-
-    - name: Send to Slack
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+       - name: Authenticate to GCP
       run: |
-        CERTS_OUTPUT=$(cat certs_output.txt)
-        MESSAGE="*SSL Certificates List:*\n\`\`\`${CERTS_OUTPUT}\`\`\`"
-        curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"${MESSAGE}\"}" $SLACK_WEBHOOK_URL
+        echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" > /tmp/key.json
+        gcloud auth activate-service-account --key-file=/tmp/key.json
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: List Certificate Names and Expiry Times
+        id: list_certs
+        run: |
+          gcloud certificate-manager certificates list --format="table(NAME, EXPIRE_TIME)" > certs_output.txt
+          cat certs_output.txt
+  
+      - name: Format Output for Slack
+        id: format_slack_message
+        run: |
+          # Read the certificate list output
+          CERTS_OUTPUT=$(cat certs_output.txt)
+  
+          SLACK_BLOCKS=$(jq -n --arg certs_output "$CERTS_OUTPUT" \
+          '[
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "SSL Certificate Expiry Report",
+                  "emoji": true
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Certificate List:*"
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": $certs_output
+                }
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "View in Console",
+                      "emoji": true
+                    },
+                    "url": "https://console.cloud.google.com/certificate-manager"
+                  }
+                ]
+              }
+            ]')
+  
+          echo "SLACK_BLOCKS=$SLACK_BLOCKS" >> $GITHUB_ENV
+  
+      - name: Send to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BLOCKS: ${{ env.SLACK_BLOCKS }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"channel\": \"#your-channel\", \"text\": \"SSL Certificates Expiry Report\", \"blocks\": ${SLACK_BLOCKS}}" \
+          $SLACK_WEBHOOK_URL
