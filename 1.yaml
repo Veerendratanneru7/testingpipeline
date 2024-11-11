@@ -34,7 +34,7 @@ jobs:
       run: |
         CERTS_OUTPUT=$(cat certs_output.txt)
   
-        SLACK_MESSAGE="*SSL Certificate Expiry Report*"
+        SLACK_MESSAGE="*Dev SSL Certificate Expiry Report*"
         echo "$CERTS_OUTPUT" | while read -r line; do
           if [[ "$line" == NAME* ]]; then
             continue
@@ -82,5 +82,5 @@ jobs:
         SLACK_BLOCKS=$(cat slack_blocks.json)
         
         curl -X POST -H 'Content-type: application/json' \
-        --data "{\"channel\": \"#your-channel\", \"text\": \"SSL Certificates Expiry Report\", \"blocks\": ${SLACK_BLOCKS}}" \
+        --data "{\"channel\": \"#your-channel\", \"text\": \"Dev SSL Certificates Expiry Report\", \"blocks\": ${SLACK_BLOCKS}}" \
         $SLACK_WEBHOOK_URL
