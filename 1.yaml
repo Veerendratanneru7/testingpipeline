@@ -33,13 +33,29 @@ jobs:
       id: format_slack_message
       run: |
         CERTS_OUTPUT=$(cat certs_output.txt)
-        jq -n --arg certs_output "$CERTS_OUTPUT" \
+  
+        SLACK_MESSAGE="*SSL Certificate Expiry Report*"
+        echo "$CERTS_OUTPUT" | while read -r line; do
+          if [[ "$line" == NAME* ]]; then
+            continue
+          fi
+          NAME=$(echo "$line" | awk '{print $1}')
+          EXPIRE_TIME=$(echo "$line" | awk '{print $2, $3}')
+    
+          if [[ "$(date -d "$EXPIRE_TIME" +%s)" -lt "$(date -d "now + 30 days" +%s)" ]]; then
+            SLACK_MESSAGE="$SLACK_MESSAGE\n• *Name:* $NAME 🔴\n  *Expires on:* $EXPIRE_TIME (Expires Soon)"
+          else
+            SLACK_MESSAGE="$SLACK_MESSAGE\n• *Name:* $NAME\n  *Expires on:* $EXPIRE_TIME"
+          fi
+        done
+    
+        jq -n --arg message "$SLACK_MESSAGE" \
         '[
             {
               "type": "header",
               "text": {
                 "type": "plain_text",
-                "text": "SSL Certificate Expiry Report",
+                "text": "Dev SSL Certificate Expiry Report",
                 "emoji": true
               }
             },
@@ -47,29 +63,15 @@ jobs:
               "type": "section",
               "text": {
                 "type": "mrkdwn",
-                "text": "*Certificate List:*"
+                "text": $message
               }
             },
             {
               "type": "section",
               "text": {
                 "type": "mrkdwn",
-                "text": $certs_output
+                "text": "Ensure the required permissions are enabled to view details in the GCP Console."
               }
-            },
-            {
-              "type": "actions",
-              "elements": [
-                {
-                  "type": "button",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "View in Console",
-                    "emoji": true
-                  },
-                  "url": "https://console.cloud.google.com/certificate-manager"
-                }
-              ]
             }
           ]' > slack_blocks.json
 
