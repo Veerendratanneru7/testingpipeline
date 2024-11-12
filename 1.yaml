@@ -65,13 +65,6 @@ jobs:
                 "type": "mrkdwn",
                 "text": $message
               }
-            },
-            {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": "Ensure the required permissions are enabled to view details in the GCP Console."
-              }
             }
           ]' > slack_blocks.json
 
