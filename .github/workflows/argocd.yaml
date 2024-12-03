@@ -1,0 +1,46 @@
+name: Setup ArgoCD and Add Cluster
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  setup-argocd:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Install ArgoCD CLI
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin
+          argocd version
+
+      # Set up kubeconfig (assumes it's stored as a GitHub secret)
+      - name: Set Up Kubeconfig
+        env:
+          KUBECONFIG: ${{ runner.temp }}/kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > $KUBECONFIG
+          kubectl config get-contexts
+
+      # Login to ArgoCD Server
+      - name: Login to ArgoCD
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure
+          argocd account get-user-info
+
+      # Add Cluster to ArgoCD
+      - name: Add Kubernetes Cluster to ArgoCD
+        env:
+          KUBECONFIG: ${{ runner.temp }}/kubeconfig
+        run: |
+          argocd cluster add $(kubectl config current-context) --grpc-web
+          argocd cluster list
