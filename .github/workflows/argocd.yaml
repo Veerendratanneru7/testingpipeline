@@ -2,7 +2,7 @@ name: Setup ArgoCD and Add Cluster
 
 on:
   workflow_dispatch:
-  
+
 jobs:
   setup-argocd:
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > $KUBECONFIG
           kubectl config get-contexts
 
-      # Login to ArgoCD Server
+      # Login to ArgoCD
       - name: Login to ArgoCD
         run: |
           argocd login ${{ secrets.ARGOCD_SERVER }} \
