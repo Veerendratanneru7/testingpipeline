@@ -1,77 +1,21 @@
-name: List GCP SSL Certificates
+trigger: none  
 
-on:
-  workflow_dispatch:
+pr: none      
 
-jobs:
-  list-ssl-certificates:
-    runs-on: vnet-runners-01
+resources:
+  pipelines:
+    - pipeline: triggeringPipeline  
+      source: 'project-name/pipeline-name'  
+      trigger: true                 
 
+stages:
+- stage: CheckoutAndBuild
+  jobs:
+  - job: CheckoutAndSetup
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - checkout: self
+      path: specific/path/for/checkout
+      fetchDepth: 0 
+      clean: true  
+      ref: refs/heads/your-branch-name
 
-    - name: Set up Google Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
-
-    - name: Authenticate to GCP
-      env:
-        GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-        GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
-      run: |
-        echo "${GCP_SERVICE_ACCOUNT_KEY}" > /tmp/key.json
-        gcloud auth activate-service-account --key-file=/tmp/key.json
-        gcloud config set project $GCP_PROJECT
-
-    - name: List Certificate Names and Expiry Times
-      id: list_certs
-      run: |
-        gcloud certificate-manager certificates list --format="table(NAME, EXPIRE_TIME)" > certs_output.txt
-        cat certs_output.txt
-
-    - name: Format Output for Slack
-      id: format_slack_message
-      run: |
-        CERTS_OUTPUT=$(cat certs_output.txt)
-  
-        SLACK_MESSAGE="*Dev SSL Certificate Expiry Report*"
-  
-        echo "$CERTS_OUTPUT" | tail -n +2 | while read -r line; do
-          NAME=$(echo "$line" | awk '{print $1}')
-          EXPIRE_TIME=$(echo "$line" | awk '{print $2, $3}')
-  
-          if [[ "$(date -d "$EXPIRE_TIME" +%s)" -lt "$(date -d "now + 30 days" +%s)" ]]; then
-            SLACK_MESSAGE="${SLACK_MESSAGE}\n• *Name:* $NAME 🔴\n  *Expires on:* $EXPIRE_TIME (Expires Soon)"
-          else
-            SLACK_MESSAGE="${SLACK_MESSAGE}\n• *Name:* $NAME\n  *Expires on:* $EXPIRE_TIME"
-          fi
-        done
-  
-        jq -n --arg message "$SLACK_MESSAGE" \
-        '[
-            {
-              "type": "header",
-              "text": {
-                "type": "plain_text",
-                "text": "Dev SSL Certificate Expiry Report",
-                "emoji": true
-              }
-            },
-            {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": $message
-              }
-            }
-          ]' > slack_blocks.json
-
-    - name: Send to Slack
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      run: |
-        SLACK_BLOCKS=$(cat slack_blocks.json)
-        
-        curl -X POST -H 'Content-type: application/json' \
-        --data "{\"channel\": \"#your-channel\", \"text\": \"Dev SSL Certificates Expiry Report\", \"blocks\": ${SLACK_BLOCKS}}" \
-        $SLACK_WEBHOOK_URL
