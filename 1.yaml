@@ -1,21 +1,22 @@
-trigger: none  
-
-pr: none      
+trigger:
+  branches:
+    include:
+      - main
 
 resources:
   pipelines:
-    - pipeline: triggeringPipeline  
-      source: 'project-name/pipeline-name'  
-      trigger: true                 
+    - pipeline: toolsPipeline
+      source: tools-pipeline-name  
 
 stages:
-- stage: CheckoutAndBuild
-  jobs:
-  - job: CheckoutAndSetup
-    steps:
-    - checkout: self
-      path: specific/path/for/checkout
-      fetchDepth: 0 
-      clean: true  
-      ref: refs/heads/your-branch-name
-
+  - stage: CallToolsPipeline
+    displayName: Trigger Tools Pipeline
+    jobs:
+      - job: TriggerTools
+        displayName: Trigger Tools Repository Checkout
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: 'specific'
+              project: '$(System.TeamProjectId)'
+              pipeline: toolsPipeline
