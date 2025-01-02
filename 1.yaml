@@ -2,6 +2,10 @@ variables:
   REPO_PAT: $(patToken) 
 
 steps:
+- checkout: self
+  displayName: 'Checkout Self Repository'
+  path: 'self'
+  
 - checkout: git://ProjectB/RepoName@main
   displayName: 'Checkout Repository from Project B'
   persistCredentials: true
