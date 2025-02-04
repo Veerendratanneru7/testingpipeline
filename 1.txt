@@ -1,22 +1,16 @@
 $smtpServer = "hybrid.sts.rsagroup.com"
-$smtpPort = "587"  # Change to 465 if required
+$smtpPort = "587"  # Try 465 instead of 587
 
 $recipient = "chethana.maidam@uk.rsagroup.com"
 $subject = "Test Email from Azure DevOps"
 $sender = "chethana.maidam@uk.rsagroup.com"
 $body = "This is a test email sent from an Azure DevOps pipeline."
 
-# Create the email message
 $message = New-Object System.Net.Mail.MailMessage($sender, $recipient, $subject, $body)
 
-# Configure the SMTP client
 $smtp = New-Object System.Net.Mail.SmtpClient($smtpServer, $smtpPort)
-$smtp.EnableSsl = $true  # Enable TLS encryption
+$smtp.EnableSsl = $true 
 
-# Add authentication (Update with actual credentials or use secure variables)
-$smtp.Credentials = New-Object System.Net.NetworkCredential("your-username", "your-password")
-
-# Send the email
 $smtp.Send($message)
 
 Write-Host "Test email sent successfully."
