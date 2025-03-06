@@ -1,10 +1,11 @@
 import boto3
 import datetime
+import os
 
 ec2_client = boto3.client("ec2")
 rds_client = boto3.client("rds")
 
-RETENTION_DAYS = 45
+RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", 45))
 
 def get_instances_using_amis():
     response = ec2_client.describe_instances(Filters=[{"Name": "instance-state-name", "Values": ["running", "stopped"]}])
@@ -18,7 +19,7 @@ def get_instances_using_amis():
 
 def get_old_unused_amis():
     response = ec2_client.describe_images(Owners=["self"])  
-    shared_response = ec2_client.describe_images(Filters=[{"Name": "is-public", "Values": ["false"]}]) 
+    shared_response = ec2_client.describe_images(Filters=[{"Name": "is-public", "Values": ["false"]}])  
 
     all_images = response["Images"] + shared_response["Images"]  
     old_unused_amis = []
@@ -44,23 +45,14 @@ def get_old_rds_snapshots():
 
     return old_snapshots
 
-def main():
+def lambda_handler(event, context):
     old_unused_amis = get_old_unused_amis()
     old_rds_snapshots = get_old_rds_snapshots()
 
-    print("\n=== Old Unused AMIs (Not Bound to Any Instance) ===")
-    if old_unused_amis:
-        for ami in old_unused_amis:
-            print(f"AMI ID: {ami['ImageId']}, Created On: {ami['CreationDate']}")
-    else:
-        print("No old unused AMIs found.")
-
-    print("\n=== Old RDS Snapshots ===")
-    if old_rds_snapshots:
-        for snapshot in old_rds_snapshots:
-            print(f"Snapshot ID: {snapshot['DBSnapshotIdentifier']}, Created On: {snapshot['SnapshotCreateTime']}")
-    else:
-        print("No old RDS snapshots found.")
-
-if __name__ == "__main__":
-    main()
+    return {
+        "statusCode": 200,
+        "body": {
+            "old_unused_amis": old_unused_amis,
+            "old_rds_snapshots": old_rds_snapshots
+        }
+    }
