@@ -17,10 +17,10 @@ def get_instances_using_amis():
     return used_amis
 
 def get_old_unused_amis():
-    response = ec2_client.describe_images(Owners=["self"])  # Fetch own AMIs
-    shared_response = ec2_client.describe_images(Filters=[{"Name": "is-public", "Values": ["false"]}])  # Fetch shared AMIs
+    response = ec2_client.describe_images(Owners=["self"])  
+    shared_response = ec2_client.describe_images(Filters=[{"Name": "is-public", "Values": ["false"]}]) 
 
-    all_images = response["Images"] + shared_response["Images"]  # Combine own and shared AMIs
+    all_images = response["Images"] + shared_response["Images"]  
     old_unused_amis = []
     cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=RETENTION_DAYS)
     used_amis = get_instances_using_amis()
